@@ -228,6 +228,7 @@ class WS28xx(weewx.abstractstation.AbstractStation):
         self.altitude          = stn_dict['altitude']
         self.model             = stn_dict.get('model', 'LaCrosse WS28xx')
         self.cfgfile           = CFGFILE
+        self.tmpfile           = TMPCFG
         self.polling_interval  = int(stn_dict.get('polling_interval', 30))
         self.frequency         = stn_dict.get('transceiver_frequency', 'US')
         self.vendor_id         = int(stn_dict.get('vendor_id',  '0x6666'), 0)
@@ -248,8 +249,10 @@ class WS28xx(weewx.abstractstation.AbstractStation):
             self.transceiver_id = int(stn_dict.get('transceiver_id', 0),16)
             loginf('Force transceiver with ID %s' % self.transceiver_id)
             self.cfgfile           = CFGFILE % ("_0x%x" % self.transceiver_id)
+            self.tmpfile           = TMPCFG % ("_0x%x" % self.transceiver_id)
         else:
             self.cfgfile           = CFGFILE
+            self.tmpfile           = CFGFILE
 
 
     @property
@@ -299,7 +302,7 @@ class WS28xx(weewx.abstractstation.AbstractStation):
             return
 
         logdbg('Initialize communication service')
-        self._service = CCommunicationService(self.cfgfile)
+        self._service = CCommunicationService(self.cfgfile,self.tmpfile)
         self._service.DataStore.setCommModeInterval(5) #lh was: 3
         if self.frequency == 'EURO' or self.frequency == 'EU':
             self._service.DataStore.setTransmissionFrequency(1)
@@ -1890,14 +1893,14 @@ class CDataStore(object):
             self.LastWeatherClubTransmission = None
             self.LastSeen = None
 
-            self.filename = TMPCFG
-            config = ConfigObj(self.filename)
-            config.filename = self.filename
-            try:
-                self.LastHistoryIndex = int(config['LastStat']['LastHistoryIndex'])
-            except:
-                self.LastHistoryIndex = 0xFFFF
-                pass
+            self.filename = None
+            #config = ConfigObj(self.filename)
+            #config.filename = self.filename
+            #try:
+            #    self.LastHistoryIndex = int(config['LastStat']['LastHistoryIndex'])
+            #except:
+            self.LastHistoryIndex = 0xFFFF
+            #    pass
 
     class TSettings(object):
         def __init__(self):
@@ -1910,8 +1913,8 @@ class CDataStore(object):
             self.TransceiverIdChanged = None
             self.TransceiverID = -1
             
-    def __init__(self, cfgfn):
-        logdbg('CDataStore_init %s' % cfgfn)
+    def __init__(self, cfgfn, tmpfn):
+        logdbg('CDataStore_init %s %s' % (cfgfn, tmpfn))
         #self.MemSegment = shelve???? o mmap??
         #self.DataStoreAllocator = shelve???? mmap???
         self.filename = cfgfn
@@ -1928,6 +1931,8 @@ class CDataStore(object):
         self.Request = CDataStore.TRequest()
 #        self.Request.CondFinish = threading.Condition()
         self.LastStat = CDataStore.TLastStat()
+        self.LastStat.filename = tmpfn
+        self.LastStat.LastHistoryIndex = self.getLastHistoryIndex()
         self.Settings = CDataStore.TSettings()
         self.TransceiverSettings = CDataStore.TTransceiverSettings()
         self.TransceiverSerNo = None
@@ -2783,8 +2788,8 @@ class CCommunicationService(object):
         REF              = 0x7C
         RXMISC           = 0x7D
 
-    def __init__(self, cfgfn):
-        logdbg('CCommunicationService_init %s' % cfgfn) 
+    def __init__(self, cfgfn, tmpfn):
+        logdbg('CCommunicationService_init %s %s' % (cfgfn, tmpfn))
         self.RepeatCount = 0
         self.RepeatSize = 0
         self.RepeatInterval = None
@@ -2797,7 +2802,7 @@ class CCommunicationService(object):
         self.TimeUpdate = 0
         self.TimeUpdateComplete = 0
 
-        self.DataStore = CDataStore(cfgfn)
+        self.DataStore = CDataStore(cfgfn,tmpfn)
         self.running = True
         self.shid = sHID()
 
