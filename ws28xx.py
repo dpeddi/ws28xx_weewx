@@ -2366,7 +2366,7 @@ class sHID(object):
                         else:
                             return device
                     except:
-                        pass:
+                        pass
         return None
 
     def _open_device(self, device, interface=0, configuration=1):
