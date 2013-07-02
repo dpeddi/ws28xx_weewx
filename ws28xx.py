@@ -2354,16 +2354,19 @@ class sHID(object):
         for bus in usb.busses():
             for device in bus.devices:
                 if device.idVendor == vid and device.idProduct == pid:
-                    self._open_device(device)
-                    buf = [None]
-                    if self.readConfigFlash(0x1F9, 7, buf):
-                        ID  = buf[0][5] << 8
-                        ID += buf[0][6]
-                        loginf('transceiver ID: %d (%x)' % (ID,ID))
-                    if tid != None and ID != tid:
-                        self._close_device();
-                    else:
-                        return device
+                    try:
+                        self._open_device(device)
+                        buf = [None]
+                        if self.readConfigFlash(0x1F9, 7, buf):
+                            ID  = buf[0][5] << 8
+                            ID += buf[0][6]
+                            loginf('transceiver ID: %d (%x)' % (ID,ID))
+                        if tid != None and ID != tid:
+                            self._close_device();
+                        else:
+                            return device
+                    except:
+                        pass:
         return None
 
     def _open_device(self, device, interface=0, configuration=1):
