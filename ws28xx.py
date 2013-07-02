@@ -292,7 +292,7 @@ class WS28xx(weewx.abstractstation.AbstractStation):
 
         logdbg('Initialize communication service')
         self._service = CCommunicationService(self.cfgfile)
-        self._service.DataStore.setCommModeInterval(4) #lh was: 3
+        self._service.DataStore.setCommModeInterval(5) #lh was: 3
         if self.frequency == 'EURO' or self.frequency == 'EU':
             self._service.DataStore.setTransmissionFrequency(1)
         else:
@@ -922,24 +922,19 @@ class USBHardware(object):
 
     @staticmethod
     def toWindspeed_5_2(buf, start, StartOnHiNibble): #read 5 nibbles, presentation with 2 decimals
-        if USBHardware.isErr5(buf, start+0, StartOnHiNibble) :
-            result = CWeatherTraits.WindNP()
-        elif USBHardware.isOFL5(buf, start+0, StartOnHiNibble) :
-            result = CWeatherTraits.WindOFL()
-        else:       
-            if StartOnHiNibble:
-                result = (buf[0][start+2] >> 4)* 16**6 \
-                    + (buf[0][start+0] >>  4)*   16**5 \
-                    + (buf[0][start+0] & 0xF)*   16**4 \
-                    + (buf[0][start+1] >>  4)*   16**3 \
-                    + (buf[0][start+1] & 0xF)*   16**2
-            else:
-                result = (buf[0][start+2] >> 4)* 16**6 \
-                    + (buf[0][start+2] & 0xF)*   16**5 \
-                    + (buf[0][start+0] >>  4)*   16**5 \
-                    + (buf[0][start+1] & 0xF)*   16**3 \
-                    + (buf[0][start+1] >>  4)*   16**2
-            result = result / 256.0 / 100.0
+        if StartOnHiNibble:
+            result = (buf[0][start+2] >> 4)* 16**6 \
+                + (buf[0][start+0] >>  4)*   16**5 \
+                + (buf[0][start+0] & 0xF)*   16**4 \
+                + (buf[0][start+1] >>  4)*   16**3 \
+                + (buf[0][start+1] & 0xF)*   16**2
+        else:
+            result = (buf[0][start+2] >> 4)* 16**6 \
+                + (buf[0][start+2] & 0xF)*   16**5 \
+                + (buf[0][start+0] >>  4)*   16**5 \
+                + (buf[0][start+1] & 0xF)*   16**3 \
+                + (buf[0][start+1] >>  4)*   16**2
+        result = result / 256.0 / 100.0
         return result
 
     @staticmethod
@@ -1100,7 +1095,7 @@ class CCurrentWeatherData(object):
         self.readCurrentWeather(buf,pos);
 
     def readCurrentWeather(self,buf,pos):
-        logerr('readCurrentWeather')
+        loginf('readCurrentWeather')
         nbuf = [0]
         nbuf[0] = buf[0]
         ###USBHardware.dumpBuf('Cur ', nbuf[0], 0xd7) 
@@ -1347,32 +1342,32 @@ class CCurrentWeatherData(object):
         (self._PressureRelative_hPa, self._PressureRelative_inHg) = USBHardware.readPressureShared(nbuf, 210, 1)
 
         self._timestamp = time.time()
-        logerr("_WeatherState=%s _WeatherTendency=%s _AlarmRingingFlags %04x" % (CWeatherTraits.forecastMap[self._WeatherState], CWeatherTraits.trends[self._WeatherTendency], self._AlarmRingingFlags))
-        logerr("_TempIndoor=     %8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s)" % (self._TempIndoor, self._TempIndoorMinMax._Min._Value, self._TempIndoorMinMax._Min._Time, self._TempIndoorMinMax._Max._Value, self._TempIndoorMinMax._Max._Time))
-        logerr("_HumidityIndoor= %8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s)" % (self._HumidityIndoor, self._HumidityIndoorMinMax._Min._Value, self._HumidityIndoorMinMax._Min._Time, self._HumidityIndoorMinMax._Max._Value, self._HumidityIndoorMinMax._Max._Time))
-        logerr("_TempOutdoor=    %8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s)" % (self._TempOutdoor, self._TempOutdoorMinMax._Min._Value, self._TempOutdoorMinMax._Min._Time, self._TempOutdoorMinMax._Max._Value, self._TempOutdoorMinMax._Max._Time))
-        logerr("_HumidityOutdoor=%8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s)" % (self._HumidityOutdoor, self._HumidityOutdoorMinMax._Min._Value, self._HumidityOutdoorMinMax._Min._Time, self._HumidityOutdoorMinMax._Max._Value, self._HumidityOutdoorMinMax._Max._Time))
-        logerr("_Windchill=      %8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s)" % (self._Windchill, self._WindchillMinMax._Min._Value, self._WindchillMinMax._Min._Time, self._WindchillMinMax._Max._Value, self._WindchillMinMax._Max._Time))
-        logerr("_Dewpoint=       %8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s)" % (self._Dewpoint, self._DewpointMinMax._Min._Value, self._DewpointMinMax._Min._Time, self._DewpointMinMax._Max._Value, self._DewpointMinMax._Max._Time))
-        logerr("_WindSpeed=      %8.3f" % self._WindSpeed)
-        logerr("_Gust=           %8.3f                                      _Max=%8.3f (%s)" % (self._Gust, self._GustMax._Max._Value, self._GustMax._Max._Time))
-        logerr('_WindDirection=    %3s    _GustDirection=    %3s' % (CWeatherTraits.windDirMap[self._WindDirection],  CWeatherTraits.windDirMap[self._GustDirection]))
-        logerr('_WindDirection1=   %3s    _GustDirection1=   %3s' % (CWeatherTraits.windDirMap[self._WindDirection1], CWeatherTraits.windDirMap[self._GustDirection1]))
-        logerr('_WindDirection2=   %3s    _GustDirection2=   %3s' % (CWeatherTraits.windDirMap[self._WindDirection2], CWeatherTraits.windDirMap[self._GustDirection2]))
-        logerr('_WindDirection3=   %3s    _GustDirection3=   %3s' % (CWeatherTraits.windDirMap[self._WindDirection3], CWeatherTraits.windDirMap[self._GustDirection3]))
-        logerr('_WindDirection4=   %3s    _GustDirection4=   %3s' % (CWeatherTraits.windDirMap[self._WindDirection4], CWeatherTraits.windDirMap[self._GustDirection4]))
-        logerr('_WindDirection5=   %3s    _GustDirection5=   %3s' % (CWeatherTraits.windDirMap[self._WindDirection5], CWeatherTraits.windDirMap[self._GustDirection5]))
+        loginf("_WeatherState=%s _WeatherTendency=%s _AlarmRingingFlags %04x" % (CWeatherTraits.forecastMap[self._WeatherState], CWeatherTraits.trends[self._WeatherTendency], self._AlarmRingingFlags))
+        loginf("_TempIndoor=     %8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s)" % (self._TempIndoor, self._TempIndoorMinMax._Min._Value, self._TempIndoorMinMax._Min._Time, self._TempIndoorMinMax._Max._Value, self._TempIndoorMinMax._Max._Time))
+        loginf("_HumidityIndoor= %8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s)" % (self._HumidityIndoor, self._HumidityIndoorMinMax._Min._Value, self._HumidityIndoorMinMax._Min._Time, self._HumidityIndoorMinMax._Max._Value, self._HumidityIndoorMinMax._Max._Time))
+        loginf("_TempOutdoor=    %8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s)" % (self._TempOutdoor, self._TempOutdoorMinMax._Min._Value, self._TempOutdoorMinMax._Min._Time, self._TempOutdoorMinMax._Max._Value, self._TempOutdoorMinMax._Max._Time))
+        loginf("_HumidityOutdoor=%8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s)" % (self._HumidityOutdoor, self._HumidityOutdoorMinMax._Min._Value, self._HumidityOutdoorMinMax._Min._Time, self._HumidityOutdoorMinMax._Max._Value, self._HumidityOutdoorMinMax._Max._Time))
+        loginf("_Windchill=      %8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s)" % (self._Windchill, self._WindchillMinMax._Min._Value, self._WindchillMinMax._Min._Time, self._WindchillMinMax._Max._Value, self._WindchillMinMax._Max._Time))
+        loginf("_Dewpoint=       %8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s)" % (self._Dewpoint, self._DewpointMinMax._Min._Value, self._DewpointMinMax._Min._Time, self._DewpointMinMax._Max._Value, self._DewpointMinMax._Max._Time))
+        loginf("_WindSpeed=      %8.3f" % self._WindSpeed)
+        loginf("_Gust=           %8.3f                                      _Max=%8.3f (%s)" % (self._Gust, self._GustMax._Max._Value, self._GustMax._Max._Time))
+        loginf('_WindDirection=    %3s    _GustDirection=    %3s' % (CWeatherTraits.windDirMap[self._WindDirection],  CWeatherTraits.windDirMap[self._GustDirection]))
+        loginf('_WindDirection1=   %3s    _GustDirection1=   %3s' % (CWeatherTraits.windDirMap[self._WindDirection1], CWeatherTraits.windDirMap[self._GustDirection1]))
+        loginf('_WindDirection2=   %3s    _GustDirection2=   %3s' % (CWeatherTraits.windDirMap[self._WindDirection2], CWeatherTraits.windDirMap[self._GustDirection2]))
+        loginf('_WindDirection3=   %3s    _GustDirection3=   %3s' % (CWeatherTraits.windDirMap[self._WindDirection3], CWeatherTraits.windDirMap[self._GustDirection3]))
+        loginf('_WindDirection4=   %3s    _GustDirection4=   %3s' % (CWeatherTraits.windDirMap[self._WindDirection4], CWeatherTraits.windDirMap[self._GustDirection4]))
+        loginf('_WindDirection5=   %3s    _GustDirection5=   %3s' % (CWeatherTraits.windDirMap[self._WindDirection5], CWeatherTraits.windDirMap[self._GustDirection5]))
         if (self._RainLastMonth > 0) or (self._RainLastWeek > 0):
-            logerr("_RainLastMonth=  %8.3f                                      _Max=%8.3f (%s)" % (self._RainLastMonth, self._RainLastMonthMax._Max._Value, self._RainLastMonthMax._Max._Time))
-            logerr("_RainLastWeek=   %8.3f                                      _Max=%8.3f (%s)" % (self._RainLastWeek, self._RainLastWeekMax._Max._Value, self._RainLastWeekMax._Max._Time))
-        logerr("_Rain24H=        %8.3f                                      _Max=%8.3f (%s)" % (self._Rain24H, self._Rain24HMax._Max._Value, self._Rain24HMax._Max._Time))
-        logerr("_Rain1H=         %8.3f                                      _Max=%8.3f (%s)" % (self._Rain1H, self._Rain1HMax._Max._Value, self._Rain1HMax._Max._Time))
-        logerr("_RainTotal=      %8.3f                            _LastRainReset=         (%s)" % (self._RainTotal,  self._LastRainReset))
-        logerr("PressureRel_hPa= %8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s) " % (self._PressureRelative_hPa, self._PressureRelative_hPaMinMax._Min._Value, self._PressureRelative_hPaMinMax._Min._Time, self._PressureRelative_hPaMinMax._Max._Value, self._PressureRelative_hPaMinMax._Max._Time))                       
-        logerr("PressureRel_inHg=%8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s) " % (self._PressureRelative_inHg, self._PressureRelative_inHgMinMax._Min._Value, self._PressureRelative_inHgMinMax._Min._Time, self._PressureRelative_inHgMinMax._Max._Value, self._PressureRelative_inHgMinMax._Max._Time))                       
-        ###logerr('(* Bug in Weather Station: PressureRelative._Min._Time is written to location of _PressureRelative._Max._Time')
-        ###logerr('Instead of PressureRelative._Min._Time we get: _PresRel_hPa_Max= %8.3f, _PresRel_inHg_max =%8.3f;' % (self._PresRel_hPa_Max, self._PresRel_inHg_Max))
-        logerr('Bytes with unknown meaning at 157-165: %s' % strbuf) 
+            loginf("_RainLastMonth=  %8.3f                                      _Max=%8.3f (%s)" % (self._RainLastMonth, self._RainLastMonthMax._Max._Value, self._RainLastMonthMax._Max._Time))
+            loginf("_RainLastWeek=   %8.3f                                      _Max=%8.3f (%s)" % (self._RainLastWeek, self._RainLastWeekMax._Max._Value, self._RainLastWeekMax._Max._Time))
+        loginf("_Rain24H=        %8.3f                                      _Max=%8.3f (%s)" % (self._Rain24H, self._Rain24HMax._Max._Value, self._Rain24HMax._Max._Time))
+        loginf("_Rain1H=         %8.3f                                      _Max=%8.3f (%s)" % (self._Rain1H, self._Rain1HMax._Max._Value, self._Rain1HMax._Max._Time))
+        loginf("_RainTotal=      %8.3f                            _LastRainReset=         (%s)" % (self._RainTotal,  self._LastRainReset))
+        loginf("PressureRel_hPa= %8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s) " % (self._PressureRelative_hPa, self._PressureRelative_hPaMinMax._Min._Value, self._PressureRelative_hPaMinMax._Min._Time, self._PressureRelative_hPaMinMax._Max._Value, self._PressureRelative_hPaMinMax._Max._Time))                       
+        loginf("PressureRel_inHg=%8.3f _Min=%8.3f (%s)  _Max=%8.3f (%s) " % (self._PressureRelative_inHg, self._PressureRelative_inHgMinMax._Min._Value, self._PressureRelative_inHgMinMax._Min._Time, self._PressureRelative_inHgMinMax._Max._Value, self._PressureRelative_inHgMinMax._Max._Time))                       
+        ###loginf('(* Bug in Weather Station: PressureRelative._Min._Time is written to location of _PressureRelative._Max._Time')
+        ###loginf('Instead of PressureRelative._Min._Time we get: _PresRel_hPa_Max= %8.3f, _PresRel_inHg_max =%8.3f;' % (self._PresRel_hPa_Max, self._PresRel_inHg_Max))
+        loginf('Bytes with unknown meaning at 157-165: %s' % strbuf) 
         
 class CWeatherStationConfig(object):
     def __init__(self,cfgfn):
@@ -1419,7 +1414,7 @@ class CWeatherStationConfig(object):
         logdbg('readAlertFlags')
 
     def setTemps(self,TempFormat,InTempLo,InTempHi,OutTempLo,OutTempHi):
-        logerr('setTemps')
+        loginf('setTemps')
         f1 = TempFormat
         t1 = InTempLo
         t2 = InTempHi
@@ -1771,32 +1766,32 @@ class CWeatherStationConfig(object):
         logerr('OutBufCS=             %04x' % self._OutBufCS)
         logerr('InBufCS=              %04x' % self._InBufCS)
         logerr('DeviceCS=             %04x' % self._DeviceCS)
-        logerr('ClockMode=            %s' % self._ClockMode)
-        logerr('TemperatureFormat=    %s' % self._TemperatureFormat)
-        logerr('PressureFormat=       %s' % self._PressureFormat)
-        logerr('RainFormat=           %s' % self._RainFormat)
-        logerr('WindspeedFormat=      %s' % self._WindspeedFormat)
-        logerr('WeatherThreshold=     %s' % self._WeatherThreshold)
-        logerr('StormThreshold=       %s' % self._StormThreshold)
-        logerr('LCDContrast=          %s' % self._LCDContrast)
-        logerr('LowBatFlags=          %01x' % self._LowBatFlags)
-        logerr('WindDirAlarmFlags=    %04x' % self._WindDirAlarmFlags)
+        loginf('ClockMode=            %s' % self._ClockMode)
+        loginf('TemperatureFormat=    %s' % self._TemperatureFormat)
+        loginf('PressureFormat=       %s' % self._PressureFormat)
+        loginf('RainFormat=           %s' % self._RainFormat)
+        loginf('WindspeedFormat=      %s' % self._WindspeedFormat)
+        loginf('WeatherThreshold=     %s' % self._WeatherThreshold)
+        loginf('StormThreshold=       %s' % self._StormThreshold)
+        loginf('LCDContrast=          %s' % self._LCDContrast)
+        loginf('LowBatFlags=          %01x' % self._LowBatFlags)
+        loginf('WindDirAlarmFlags=    %04x' % self._WindDirAlarmFlags)
         logerr('OtherAlarmFlags=      %04x' % self._OtherAlarmFlags)
-        logerr('HistoryInterval=      %s' % self._HistoryInterval)
-        logerr('TempIndoor_Min=       %s' % self._TempIndoorMinMax._Min._Value)
-        logerr('TempIndoor_Max=       %s' % self._TempIndoorMinMax._Max._Value)
-        logerr('TempOutdoor_Min=      %s' % self._TempOutdoorMinMax._Min._Value)
-        logerr('TempOutdoor_Max=      %s' % self._TempOutdoorMinMax._Max._Value)
-        logerr('HumidityIndoor_Min=   %s' % self._HumidityIndoorMinMax._Min._Value)
-        logerr('HumidityIndoor_Max=   %s' % self._HumidityIndoorMinMax._Max._Value)
-        logerr('HumidityOutdoor_Min=  %s' % self._HumidityOutdoorMinMax._Min._Value)
-        logerr('HumidityOutdoor_Max=  %s' % self._HumidityOutdoorMinMax._Max._Value)
-        logerr('Rain24HMax=           %s' % self._Rain24HMax._Max._Value)
-        logerr('GustMax=              %s' % self._GustMax._Max._Value)
-        logerr('PressureRel_hPa_Min=  %s' % self._PressureRelative_hPaMinMax._Min._Value)
-        logerr('PressureRel_inHg_Min= %s' % self._PressureRelative_inHgMinMax._Min._Value)
-        logerr('PressureRel_hPa_Max=  %s' % self._PressureRelative_hPaMinMax._Max._Value)
-        logerr('PressureRel_inHg_Max= %s' % self._PressureRelative_inHgMinMax._Max._Value) 
+        loginf('HistoryInterval=      %s' % self._HistoryInterval)
+        loginf('TempIndoor_Min=       %s' % self._TempIndoorMinMax._Min._Value)
+        loginf('TempIndoor_Max=       %s' % self._TempIndoorMinMax._Max._Value)
+        loginf('TempOutdoor_Min=      %s' % self._TempOutdoorMinMax._Min._Value)
+        loginf('TempOutdoor_Max=      %s' % self._TempOutdoorMinMax._Max._Value)
+        loginf('HumidityIndoor_Min=   %s' % self._HumidityIndoorMinMax._Min._Value)
+        loginf('HumidityIndoor_Max=   %s' % self._HumidityIndoorMinMax._Max._Value)
+        loginf('HumidityOutdoor_Min=  %s' % self._HumidityOutdoorMinMax._Min._Value)
+        loginf('HumidityOutdoor_Max=  %s' % self._HumidityOutdoorMinMax._Max._Value)
+        loginf('Rain24HMax=           %s' % self._Rain24HMax._Max._Value)
+        loginf('GustMax=              %s' % self._GustMax._Max._Value)
+        loginf('PressureRel_hPa_Min=  %s' % self._PressureRelative_hPaMinMax._Min._Value)
+        loginf('PressureRel_inHg_Min= %s' % self._PressureRelative_inHgMinMax._Min._Value)
+        loginf('PressureRel_hPa_Max=  %s' % self._PressureRelative_hPaMinMax._Max._Value)
+        loginf('PressureRel_inHg_Max= %s' % self._PressureRelative_inHgMinMax._Max._Value) 
         logerr('ResetMinMaxFlags=     %06x (Output only)' % self._ResetMinMaxFlags) 
 
 class CHistoryDataSet(object):
@@ -1820,10 +1815,10 @@ class CHistoryDataSet(object):
         self.readHistory(buf,pos)
 
     def readHistory(self,buf,pos):
-        logerr('readHistory')
+        loginf('readHistory')
         nbuf = [0]
         nbuf[0] = buf[0]
-        USBHardware.dumpBuf('His ', nbuf[0], 0x1e) 
+        ###USBHardware.dumpBuf('His ', nbuf[0], 0x1e) 
         self.m_Gust = USBHardware.toWindspeed_3_1(nbuf, 12, 0)
         self.m_WindDirection = (nbuf[0][14] >> 4) & 0xF
         self.m_WindSpeed = USBHardware.toWindspeed_3_1(nbuf, 14, 0)
@@ -1839,16 +1834,16 @@ class CHistoryDataSet(object):
         self.m_TempIndoor = USBHardware.toTemperature_3_1(nbuf, 23, 0)
         self.m_TempOutdoor = USBHardware.toTemperature_3_1(nbuf, 22, 1)                   
         self.m_Time = USBHardware.toDateTime(nbuf, 25, 1)
-        logerr("m_Time           %s"    % self.m_Time)
-        logerr("m_TempIndoor=       %7.1f" % self.m_TempIndoor)
-        logerr("m_HumidityIndoor=   %7.0f" % self.m_HumidityIndoor)
-        logerr("m_TempOutdoor=      %7.1f" % self.m_TempOutdoor)
-        logerr("m_HumidityOutdoor=  %7.0f" % self.m_HumidityOutdoor)
-        logerr("m_PressureRelative= %7.1f" % self.m_PressureRelative)
-        logerr("m_RainCounterRaw=   %7.1f" % self.m_RainCounterRaw)
-        logerr("m_WindDirection=        %.3s" % CWeatherTraits.windDirMap[self.m_WindDirection])
-        logerr("m_WindSpeed=        %7.1f" % self.m_WindSpeed)
-        logerr("m_Gust=             %7.1f" % self.m_Gust)
+        loginf("m_Time           %s"    % self.m_Time)
+        loginf("m_TempIndoor=       %7.1f" % self.m_TempIndoor)
+        loginf("m_HumidityIndoor=   %7.0f" % self.m_HumidityIndoor)
+        loginf("m_TempOutdoor=      %7.1f" % self.m_TempOutdoor)
+        loginf("m_HumidityOutdoor=  %7.0f" % self.m_HumidityOutdoor)
+        loginf("m_PressureRelative= %7.1f" % self.m_PressureRelative)
+        loginf("m_RainCounterRaw=   %7.1f" % self.m_RainCounterRaw)
+        loginf("m_WindDirection=        %.3s" % CWeatherTraits.windDirMap[self.m_WindDirection])
+        loginf("m_WindSpeed=        %7.1f" % self.m_WindSpeed)
+        loginf("m_Gust=             %7.1f" % self.m_Gust)
 
 class CDataStore(object):
 
@@ -2286,7 +2281,7 @@ class CDataStore(object):
             self.Request.CondFinish.release()
 
     def getConfig(self):
-        logerr("getConfig")
+        loginf("getConfig")
         #if ( CSingleInstance::IsRunning(this) && CDataStore::getFlag<0>(thisa) && CDataStore::getDeviceRegistered(thisa) )
         if self.getFlag_FLAG_TRANSCEIVER_PRESENT() and self.getDeviceRegistered():
             self.Request.Type = ERequestType.rtGetConfig;
@@ -2296,7 +2291,7 @@ class CDataStore(object):
             logerr("getConfig - warning: flag False or getDeviceRegistered false")
 
     def setConfig(self):
-        logerr("setConfig")
+        loginf("setConfig")
         #if ( CSingleInstance::IsRunning(this) && CDataStore::getFlag<0>(thisa) && CDataStore::getDeviceRegistered(thisa) )
         if self.getFlag_FLAG_TRANSCEIVER_PRESENT() and self.getDeviceRegistered():
             self.Request.Type = ERequestType.rtSetConfig;
@@ -2333,6 +2328,7 @@ class sHID(object):
         self.debug = 0
         self.timeout = 1000
         self.prev_data = [0]*0x131
+        self.PollCount = 0
 
     def open(self, vid=0x6666, pid=0x5555):
         device = self._find_device(vid, pid)
@@ -2408,6 +2404,12 @@ class sHID(object):
         except:
             pass
 
+    def setPollCount(self, pollcount):
+        self.PollCount = pollcount
+        
+    def getPollCount(self):
+        return self.PollCount
+         
     def setTX(self):
         buf = [0]*0x15
         buf[0] = 0xd1;
@@ -2440,28 +2442,38 @@ class sHID(object):
             result = 0
         return result
 
-    def getState(self,StateBuffer):
-        try:
-            buf = self.devh.controlMsg(requestType=usb.TYPE_CLASS |
+    def getState(self,StateBuffer): 
+        found = False
+        time.sleep(0.020) # initial wait after setRX
+        while not found:
+            try:
+                buf = self.devh.controlMsg(requestType=usb.TYPE_CLASS |
                                        usb.RECIP_INTERFACE | usb.ENDPOINT_IN,
                                        request=usb.REQ_CLEAR_FEATURE,
                                        buffer=0x0a,
                                        value=0x00003de,
                                        index=0x0000000,
                                        timeout=self.timeout)
-            StateBuffer[0]=[0]*0x2
-            StateBuffer[0][0]=buf[1]
-            StateBuffer[0][1]=buf[2]
-            result = 1
-        except:
-            result = 0
-            if self.debug == 1:
-                buf[1]=0x14
-                StateBuffer[0]=[0]*0x2
-                StateBuffer[0][0]=buf[1]
-                StateBuffer[0][1]=buf[2]
-                result =1
-        self.dump('getState', buf)
+                
+                if (buf[1] == 0x16) : # we are only interested in 0xde16 messages
+                    StateBuffer[0]=[0]*0x2
+                    StateBuffer[0][0]=buf[1]
+                    StateBuffer[0][1]=buf[2]
+                    found = True # jump out while loop
+                    result = 1
+                else:
+                    self.PollCount += 1 # count the non 0xde16 states
+                    time.sleep(0.020) #initial wait after getState
+            except:
+                logerr('exception getState')
+                time.sleep(0.020) #initial wait after getState
+                if self.debug == 1:
+                    buf[1]=0x14
+                    StateBuffer[0]=[0]*0x2
+                    StateBuffer[0][0]=buf[1]
+                    StateBuffer[0][1]=buf[2]
+                found = True # jump out while loop
+                result = 0
         return result
 
     def readConfigFlash(self,addr,numBytes,data):
@@ -2482,7 +2494,7 @@ class sHID(object):
                                          index=0x0000000,
                                          timeout=self.timeout)
                     result = 1
-                    ###USBHardware.dumpBuf('rcfo', buf, 4)
+                    USBHardware.dumpBuf('rcfo', buf, 4)
                 except:
                     result = 0
 
@@ -2496,7 +2508,7 @@ class sHID(object):
                                                index=0x0000000,
                                                timeout=self.timeout)
                     result = 1
-                    ####USBHardware.dumpBuf('rcfi', buf, 20)
+                    USBHardware.dumpBuf('rcfi', buf, 20)
                 except:
                     result = 0
                     if addr == 0x1F5 and self.debug == 1: #//fixme #debugging... without device
@@ -2594,26 +2606,24 @@ class sHID(object):
         except:
             result = 0
 
-
         new_data=[0]*0x131
         new_numBytes=(buf[1] << 8 | buf[2])& 0x1ff;
         different = 0
         for i in xrange(0, new_numBytes):
-            if self.prev_data[i] != buf[i+3]:
-                if (i != 3) and (new_numBytes != 6):
+            if (different == 0) and (self.prev_data[i+3] != buf[i+3]):
+                if (i != 3):
                     different = 1
             new_data[i] = buf[i+3];
-            self.prev_data[i] = buf[i+3];
-        self.dump('getFrame', buf)
+            self.prev_data[i+3] = buf[i+3];
 
         data[0] = new_data
         numBytes[0] = new_numBytes
-
         if different == 0:
-            return result
+            logerr('getFrame skipped')
+            return result #2 # data is the same as with previous getFrame (active when return = 2)
         else:
-            logdbg('getFrame skipped')
-            return 2 # data is the same as with previous getFrame
+            self.dump('getFrame', buf)
+            return result
 
     def writeReg(self,regAddr,data):
         buf = [0]*0x05
@@ -2647,7 +2657,7 @@ class sHID(object):
                                  index=0x0000000,
                                  timeout=self.timeout)
             result = 1
-            ###USBHardware.dumpBuf('exe ', buf, 20) 
+            USBHardware.dumpBuf('exe ', buf, 20) 
         except:
             result = 0
         return result
@@ -2665,21 +2675,21 @@ class sHID(object):
                                  index=0x0000000,
                                  timeout=self.timeout)
             result = 1
-            ###USBHardware.dumpBuf('spp ', buf, 20) 
+            USBHardware.dumpBuf('spp ', buf, 20) 
         except:
             result = 0
         return result
 
     def dump(self, cmd, buf):
+        actTime = datetime.now()
         strbuf = ""
         buflen = 0
         for i in buf:
             buflen += 1
-            if buflen <= (21):
-                strbuf += str("%.2x" % i)
-        if (strbuf != 'de1500000000') and (strbuf != 'de1400000000') and (strbuf != 'de0b00000000'):  # we do not care about these codes
-            if (cmd=='getFrame' or cmd=='setFrame'):
-                logdbg("%s: %s" % (cmd, strbuf))
+            if buflen <= (15):
+                strbuf += str("%.2x " % i)
+        if (cmd=='getFrame' or cmd=='setFrame'):
+            logerr("%s %s: %s" % (actTime, cmd, strbuf))
 
 class CCommunicationService(object):
 
@@ -2772,10 +2782,10 @@ class CCommunicationService(object):
 
         self.TimeDifSec = 0
         self.DifHis = 0
-        self.slpLoop= 0.020 # sleeptime of loop
+        self.shid = sHID()
 
     def buildFirstConfigFrame(self,Buffer):
-        logerr("buildFirstConfigFrame")
+        loginf("buildFirstConfigFrame")
         USBHardware.dumpBuf('1stI', Buffer[0], 0x6)
         newBuffer = [0]
         newBuffer[0] = [0]*9
@@ -2792,7 +2802,7 @@ class CCommunicationService(object):
         newBuffer[0][6] = (HistoryAddress >> 16) & 0x0F | 16 * (ComInt & 0xF);
         newBuffer[0][7] = (HistoryAddress >> 8 ) & 0xFF # BYTE1(HistoryAddress);
         newBuffer[0][8] = (HistoryAddress >> 0 ) & 0xFF
-        ###USBHardware.dumpBuf('1stO', newBuffer[0], 0x9)
+        USBHardware.dumpBuf('1stO', newBuffer[0], 0x9)
         Buffer[0]=newBuffer[0]
         Length = 0x09
         return Length
@@ -2816,7 +2826,7 @@ class CCommunicationService(object):
         else: # current config not up to date; don't write yet
             Length = 0
         time = datetime.now()
-        logerr('buildConfigFrame')
+        loginf('buildConfigFrame')
         ###USBHardware.dumpBuf('Out ', newBuffer[0], 0x30)
         return Length    
 
@@ -2838,7 +2848,7 @@ class CCommunicationService(object):
                 Second = 6 - Second
             else:
                 Second = 60 - Second + 6;
-            logerr('set ComInt to %s s' % Second)
+            loginf('set ComInt to %s s' % Second)
             HistoryIndex = self.DataStore.getLastHistoryIndex();
             Length = self.buildACKFrame(newBuffer, 0, DeviceCS, HistoryIndex, Second);
             Buffer[0]=newBuffer[0]
@@ -2864,7 +2874,8 @@ class CCommunicationService(object):
             self.TimeSent = 1
             Buffer[0]=newBuffer[0]
             Length = 0x0c
-            ###USBHardware.dumpBuf('Time', newBuffer[0], 0x0c)
+            logerr('WS SetTime - Send time to WS')
+            USBHardware.dumpBuf('Time', newBuffer[0], 0x0c)
         return Length
 
     def buildACKFrame(self,Buffer, Action, DeviceCS, HistoryIndex, ComInt):
@@ -3050,10 +3061,13 @@ class CCommunicationService(object):
         Quality = Buffer[0][3] & 0x7F;
         self.DataStore.setLastLinkQuality( Quality);
         self.DataStore.setCurrentWeather( Data);
-        
         DeviceCS = newBuffer[0][5] | (newBuffer[0][4] << 8);
         self.DataStore.WeatherStationConfig.setDeviceCS(DeviceCS)
-
+        
+        pollcount = self.shid.getPollCount()
+        self.shid.setPollCount(0)
+        logerr('CurrentData pollcount=%s' % pollcount)   
+        
         cfgBuffer = [0]
         cfgBuffer[0] = [0]*44
         Changed = self.DataStore.WeatherStationConfig.testConfigChanged(cfgBuffer)
@@ -3148,21 +3162,20 @@ class CCommunicationService(object):
             self.DataStore.addHistoryData(Data);
             self.DataStore.setLastHistoryIndex( ThisHistoryIndex);
 
+        pollcount = self.shid.getPollCount()
+        self.shid.setPollCount(0)
         if ( LatestHistoryIndex >= ThisHistoryIndex ): #unused
             self.DifHis = LatestHistoryIndex - ThisHistoryIndex
-            #self.DataStore.setOutstandingHistorySets( self.DifHis) #unused
-            if self.DifHis > 0:
-                logerr('m_Time          %s  OutstandingHistorySets: %4i' % (Data.m_Time, self.DifHis))
         else:
             self.DifHis = LatestHistoryIndex + 1797 - ThisHistoryIndex
-            if self.DifHis > 0:
-                logerr('m_Time          %s  OutstandingHistorySets: %4i' % (Data.m_Time, self.DifHis)) 
+        if self.DifHis > 0:
+            logerr('m_Time          %s  OutstandingHistorySets: %4i pollcount=%s' % (Data.m_Time, self.DifHis, pollcount)) 
 
         if ThisHistoryIndex == LatestHistoryIndex:
             self.TimeDifSec = (Data.m_Time - datetime.now()).seconds
             if self.TimeDifSec > 43200:
                 self.TimeDifSec = self.TimeDifSec - 86400 +1
-            logerr('m_Time          %s      WS clock offset %4s s' % (Data.m_Time, self.TimeDifSec))
+            logerr('m_Time          %s      WS clock offset %4s s pollcount=%s' % (Data.m_Time, self.TimeDifSec, pollcount))
         else:
             logdbg('m_Time          %s  No recent historydata' % Data.m_Time)
         
@@ -3352,9 +3365,9 @@ class CCommunicationService(object):
                 self.DataStore.setDeviceRegistered(True)
                 HistoryIndex = 0xffff
                 newLength[0] = self.buildACKFrame(newBuffer,3,DeviceCS,HistoryIndex,0xFFFFFFFF)  
-            elif self.DataStore.getDeviceRegistered():
+            elif 0==0: #self.DataStore.getDeviceRegistered(): #lh do we need this check?
                 RegisterdID = self.DataStore.getDeviceId()
-                if ID == RegisterdID:
+                if ID == RegisterdID: 
                     responseType = (Buffer[0][2] & 0xE0)
                     logdbg("Length %02x RegisteredID x%04x responseType: x%02x" % (Length[0], RegisterdID, responseType))
                     if responseType == 0x20:
@@ -3389,6 +3402,7 @@ class CCommunicationService(object):
                         #    00000000: 00 00 06 00 32 a3
                         #    00000000: 00 00 06 00 32 a2
                         if Length[0] == 0x06:
+                            self.shid.setPollCount(1)
                             self.handleNextAction(newBuffer, newLength);
                         else:
                             newLength[0] = 0
@@ -3420,7 +3434,7 @@ class CCommunicationService(object):
         if self.shid.readConfigFlash(0x1F9, 7, buf):
             ID  = buf[0][5] << 8
             ID += buf[0][6]
-            logdbg("DeviceID=0x%x" % ID)
+            logerr("DeviceID=0x%x" % ID)
             self.DataStore.setDeviceId(ID)
 
             SN  = str("%02d"%(buf[0][0]))
@@ -3436,9 +3450,9 @@ class CCommunicationService(object):
                 self.shid.writeReg(Register,self.AX5051RegisterNames_map[Register])
 
             if self.shid.execute(5):
-                logdbg('setPreamblePattern(0xaa)')
+                logerr('setPreamblePattern(0xaa)')
                 self.shid.setPreamblePattern(0xaa)
-                logdbg('setState(0x1e)')
+                logerr('setState(0x1e); push SET button if stopped')
                 if self.shid.setState(0x1e):
                     time.sleep(1)
                     if self.shid.setRX():
@@ -3468,7 +3482,7 @@ class CCommunicationService(object):
     def doRF(self):
         try:
             ComInt = self.DataStore.getCommModeInterval();
-            logerr('Initializing rf communication, slpLoop=%5.3f s, WeatherData Interval=%i s' % (self.slpLoop, ComInt+1))
+            logerr('Initializing rf communication, WeatherData Interval=%i s' % (ComInt+1))
             self.DataStore.setFlag_FLAG_TRANSCEIVER_SETTING_CHANGE(1)
             self.shid.open()
             self.transceiverInit()
@@ -3486,52 +3500,26 @@ class CCommunicationService(object):
         DataLength = [0]
         DataLength[0] = 0
         StateBuffer = [None]
-        ret = self.shid.getState(StateBuffer)
-        if ret == 1:
+        if self.shid.getState(StateBuffer) != 1:
+            logerr('getState failed')
+        else:
             FrameBuffer=[0]
             FrameBuffer[0]=[0]*0x03
-            ReceiverState = StateBuffer[0][0]
-            if ReceiverState == 0x16:
-                ret = self.shid.getFrame(FrameBuffer, DataLength)
-                if ret == 0:
-                    raise Exception("getFrame failed")
-            if ret == 2: # double message
-                rel_time = 0 # skip handling of getFrame
+            ret = self.shid.getFrame(FrameBuffer, DataLength)
+            logerr('ret=%s' % ret)
+            if ret == 0:
+                raise Exception("getFrame failed")
+            if ret == 2: #2= double message
+                logerr('getFrame double message')
             else:
-                rel_time = self.generateResponse(FrameBuffer, DataLength)
-            if rel_time == 1:
-                self.shid.setState(0)
-                ret = self.shid.setFrame(FrameBuffer[0], DataLength[0]) # send the ackframe prepared by generateResponse
-                if ret == 1:
-                    ret = self.shid.setTX()
-                    if ret == 1:
-                        ReceiverState = 0xc8
-                        while ret == 1:
-                            Action = FrameBuffer[0][2]
-                            logdbg('Action=%2x' % Action)
-                            if Action == 0xc0:
-                                logerr('WS SetTime - Send time to WS')
-                            ret = self.shid.getState(StateBuffer)
-                            if ret == 1:
-                                break  #lh no further actions here
-                                logdbg('requestTick')
-                                self.DataStore.requestTick()
-                                ReceiverState = StateBuffer[0]
-                                if not ReceiverState or ReceiverState == 0x15:
-                                    self.RepeatTime = datetime.now()
-                                    time.sleep(0.2)
-                                break
-                            else:
-                                logerr('getState failed')
-                    else:
-                        logerr("setTX failed")
+                if self.generateResponse(FrameBuffer, DataLength) != 1:
+                    logerr('generateResponse failed')
                 else:
-                    logerr('setFrame failed')
-
-            if ReceiverState != 0x15:
-                ret = self.shid.setRX() #make state from 14 to 15
-
-        if not ret:
-            self.DataStore.setFlag_FLAG_TRANSCEIVER_PRESENT( 0)
-
-        time.sleep(self.slpLoop)
+                    self.shid.setState(0)
+                    if self.shid.setFrame(FrameBuffer[0], DataLength[0]) != 1: # send the ackframe prepared by generateResponse
+                        logerr('setFrame failed')
+                    else:
+                        if self.shid.setTX() != 1:
+                            logerr("setTX failed")
+            if self.shid.setRX() != 1:
+                logerr('setRX failed')
