@@ -596,6 +596,7 @@ class WS28xx(weewx.abstractstation.AbstractStation):
         self.frequency         = stn_dict.get('transceiver_frequency', 'US')
         self.vendor_id         = int(stn_dict.get('vendor_id',  '0x6666'), 0)
         self.product_id        = int(stn_dict.get('product_id', '0x5555'), 0)
+        self.transceiver_id    = stn_dict.get('transceiver_id', None)
         self.pressure_offset   = stn_dict.get('pressure_offset', None)
         if self.pressure_offset is not None:
             self.pressure_offset = float(self.pressure_offset)
@@ -608,6 +609,10 @@ class WS28xx(weewx.abstractstation.AbstractStation):
         loginf('frequency is %s' % self.frequency)
         loginf('altitude is %s meters' % str(self.altitude))
         loginf('pressure offset is %s' % str(self.pressure_offset))
+        if self.transceiver_id:
+            self.transceiver_id = int(stn_dict.get('transceiver_id', 0),16)
+            loginf('Force transceiver with ID %s' % self.transceiver_id)
+
 
     @property
     def hardware_name(self):
@@ -653,7 +658,7 @@ class WS28xx(weewx.abstractstation.AbstractStation):
         if self._service is not None:
             return
         self._service = CCommunicationService(self.cfgfile)
-        self._service.setup(self.frequency)
+        self._service.setup(self.frequency,self.transceiver_id)
         self._service.startRFThread()
 
     def shutdown(self):
@@ -2454,22 +2459,30 @@ class sHID(object):
         self.debug = 0
         self.timeout = 1000
 
-    def open(self, vid=0x6666, pid=0x5555):
-        device = self._find_device(vid, pid)
+    def open(self, vid=0x6666, pid=0x5555, tid=None):
+        device = self._find_device(vid, pid, tid)
         if device is None:
             logcrt('Cannot find USB device with Vendor=0x%04x ProdID=0x%04x' %
                    (vid, pid))
             raise weewx.WeeWxIOError('Unable to find USB device')
-        self._open_device(device)
 
     def close(self):
         self._close_device()
 
-    def _find_device(self, vid, pid):
+    def _find_device(self, vid, pid, tid):
         for bus in usb.busses():
             for device in bus.devices:
                 if device.idVendor == vid and device.idProduct == pid:
-                    return device
+                    self._open_device(device)
+                    buf = [None]
+                    if self.ReadConfigFlash(0x1F9, 7, buf):
+                        ID  = buf[0][5] << 8
+                        ID += buf[0][6]
+                        loginf('transceiver ID: %d (%x)' % (ID,ID))
+                    if tid != None and ID != tid:
+                        self._close_device();
+                    else:
+                        return device
         return None
 
     def _open_device(self, device, interface=0, configuration=1):
@@ -3648,10 +3661,10 @@ class CCommunicationService(object):
         if errmsg != '':
             raise Exception('transceiver initialization failed: %s' % errmsg)
 
-    def setup(self, frequency):
+    def setup(self, frequency, transceiver_id):
         self.DataStore.setFrequencyStandard(frequency)
         self.DataStore.setFlag_FLAG_TRANSCEIVER_SETTING_CHANGE(1)
-        self.shid.open()
+        self.shid.open(tid=transceiver_id)
         self.initTransceiver()
         self.DataStore.setFlag_FLAG_TRANSCEIVER_PRESENT(1)
         self.shid.SetRX()
