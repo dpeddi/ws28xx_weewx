@@ -458,10 +458,10 @@ DRIVER_VERSION = '0.2'
 
 # name of the pseudo configuration filename
 # FIXME: consolidate with stats cache, since config comes from weewx
-CFG_CACHE = '/tmp/ws28xx.cfg'
+CFG_CACHE = '/tmp/ws28xx%s.cfg'
 
 # location of the 'last status' cache file
-STATS_CACHE = '/tmp/ws28xx.tmp'
+STATS_CACHE = '/tmp/ws28xx%s.tmp'
 
 # flags for enabling/disabling debug verbosity
 DEBUG_WRITES = 0
@@ -591,7 +591,6 @@ class WS28xx(weewx.abstractstation.AbstractStation):
 
         self.altitude          = stn_dict['altitude']
         self.model             = stn_dict.get('model', 'LaCrosse WS28xx')
-        self.cfgfile           = CFG_CACHE
         self.polling_interval  = int(stn_dict.get('polling_interval', 30))
         self.frequency         = stn_dict.get('transceiver_frequency', 'US')
         self.vendor_id         = int(stn_dict.get('vendor_id',  '0x6666'), 0)
@@ -612,6 +611,9 @@ class WS28xx(weewx.abstractstation.AbstractStation):
         if self.transceiver_id:
             self.transceiver_id = int(stn_dict.get('transceiver_id', 0),16)
             loginf('Force transceiver with ID %s' % self.transceiver_id)
+            self.cfgfile           = CFG_CACHE % ("0x%x" % self.transceiver_id)
+        else:
+            self.cfgfile           = CFG_CACHE
 
 
     @property
