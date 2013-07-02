@@ -103,8 +103,8 @@ import weeutil.weeutil
 import weewx.abstractstation
 import weewx.units
 
-TMPCFG = '/tmp/ws28xx.tmp'
-CFGFILE = '/tmp/ws28xx.cfg'
+TMPCFG = '/tmp/ws28xx%s.tmp'
+CFGFILE = '/tmp/ws28xx%s.cfg'
 
 def logdbg(msg):
     syslog.syslog(syslog.LOG_DEBUG, 'ws28xx: %s' % msg)
@@ -227,7 +227,7 @@ class WS28xx(weewx.abstractstation.AbstractStation):
 
         self.altitude          = stn_dict['altitude']
         self.model             = stn_dict.get('model', 'LaCrosse WS28xx')
-        self.cfgfile           = '/tmp/ws28xx.cfg'
+        self.cfgfile           = CFGFILE
         self.polling_interval  = int(stn_dict.get('polling_interval', 30))
         self.frequency         = stn_dict.get('transceiver_frequency', 'US')
         self.vendor_id         = int(stn_dict.get('vendor_id',  '0x6666'), 0)
@@ -247,6 +247,9 @@ class WS28xx(weewx.abstractstation.AbstractStation):
         if self.transceiver_id:
             self.transceiver_id = int(stn_dict.get('transceiver_id', 0),16)
             loginf('Force transceiver with ID %s' % self.transceiver_id)
+            self.cfgfile           = CFGFILE % ("_0x%x" % self.transceiver_id)
+        else:
+            self.cfgfile           = CFGFILE
 
 
     @property
@@ -1420,7 +1423,7 @@ class CWeatherStationConfig(object):
             self._DeviceCS = int(config['ws28xx']['DeviceCS']) # Actual config checksum received via messages
         except:
             self._DeviceCS = 0
-        self.filename= CFGFILE
+        self.filename= cfgfn
         self._ClockMode = 0
         self._TemperatureFormat = 0
         self._PressureFormat = 0
@@ -1633,7 +1636,6 @@ class CWeatherStationConfig(object):
         self.parse_0(number*1000.0, buf, start, StartOnHiNibble, numbytes)
     
     def writeConfig(self):
-        self.filename = CFGFILE
         config = ConfigObj(self.filename)
         config.filename = self.filename
         config['ws28xx'] = {}
@@ -1991,7 +1993,7 @@ class CDataStore(object):
         self.WeatherClubSettings = 0;
         self.HistoryData = CHistoryDataSet();
         self.CurrentWeather = CCurrentWeatherData();
-        self.WeatherStationConfig = CWeatherStationConfig(CFGFILE)
+        self.WeatherStationConfig = CWeatherStationConfig(cfgfn)
         self.FrontEndConfig = 0;
         self.Request = 0;
         self.LastHistTimeStamp = 0;
@@ -2011,9 +2013,8 @@ class CDataStore(object):
     #    print ShelveDataStore.keys()
 
     def writeLastStat(self):
-        self.filename = TMPCFG
-        config = ConfigObj(self.filename)
-        config.filename = self.filename
+        config = ConfigObj(self.LastStat.filename)
+        config.filename = self.LastStat.filename
         config['LastStat'] = {}
         config['LastStat']['LastLinkQuality'] = str(self.LastStat.LastLinkQuality)
         config['LastStat']['LastSeen'] = str(self.LastStat.LastSeen)
@@ -2024,7 +2025,6 @@ class CDataStore(object):
         config.write()
 
     def writeSettings(self):
-        self.filename = CFGFILE
         config = ConfigObj(self.filename)
         config.filename = self.filename
         config['Settings'] = {}
@@ -2032,7 +2032,6 @@ class CDataStore(object):
         config.write()
 
     def writeDataStore(self):
-        self.filename = CFGFILE
         config = ConfigObj(self.filename)
         config.filename = self.filename
         config['DataStore'] = {}
@@ -2043,7 +2042,6 @@ class CDataStore(object):
         logdbg('getDeviceConfig')
 
     def getTransmissionFrequency(self):
-        self.filename = CFGFILE
         config = ConfigObj(self.filename)
         config.filename = self.filename
         try:
@@ -2054,7 +2052,6 @@ class CDataStore(object):
         return self.TransceiverSettings.TransmissionFrequency
 
     def setTransmissionFrequency(self,val):
-        self.filename = CFGFILE
         config = ConfigObj(self.filename)
         config.filename = self.filename
         config['TransceiverSettings'] = {}
@@ -2072,7 +2069,6 @@ class CDataStore(object):
         self.TransceiverSettings.ForcedDeviceId = val
 
     def getDeviceId(self):
-        self.filename = CFGFILE
         config = ConfigObj(self.filename)
         config.filename = self.filename
         try:
