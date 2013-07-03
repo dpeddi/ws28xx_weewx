@@ -251,8 +251,8 @@ class WS28xx(weewx.abstractstation.AbstractStation):
             self.cfgfile           = CFGFILE % ("_0x%x" % self.transceiver_id)
             self.tmpfile           = TMPCFG % ("_0x%x" % self.transceiver_id)
         else:
-            self.cfgfile           = CFGFILE
-            self.tmpfile           = CFGFILE
+            self.cfgfile           = CFGFILE % ""
+            self.tmpfile           = TMPCFG % ""
 
 
     @property
